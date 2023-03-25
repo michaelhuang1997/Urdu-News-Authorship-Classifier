@@ -1,0 +1,404 @@
+---
+title: "2023 Spring DIGS 30032 Final Project"
+author: "Michael Huang"
+date: "2023-03-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
+```
+
+```{r}
+library(tidyverse)
+library(rvest)
+```
+
+# INP news 
+
+```{r}
+# INP news webscraping function
+scrape_doc <- function(url){
+  df <- read_html(url)
+  title <- html_elements(x=df, css=".secondary_title") %>% # retrieve title
+    html_text2()
+  title <- title[1]
+  date <- html_elements(x= df, css = ".news_date") %>% # retrieve date
+    html_text2()
+  text <- html_elements(x = df, css = ".news_description") %>% # retrieve text
+  html_text2() 
+  url_data <- tibble(
+    date=date,
+    title=title,
+    text=text
+  )
+  return(url_data)
+}
+```
+
+```{r}
+# INP news URLs DATED except the first eight
+#03/24/2-23-
+url_list <- c(
+  url1 <- ("https://www.inp.net.pk/ur/news-detail/%D9%BE%D8%A7%DA%A9%D8%B3%D8%AA%D8%A7%D9%86/pakstan-chin-ki-aar-aim-bi-aor-rop-mi-tjart-alr-ko-zoal"),
+  url2 <- ("https://www.inp.net.pk/ur/news-detail/%D8%B4%D9%90%D9%86%DB%81%D9%88%D8%A7-%D9%BE%D8%A7%DA%A9%D8%B3%D8%AA%D8%A7%D9%86-%D8%B3%D8%B1%D9%88%D8%B3/chin-ookishnl-aijokishn-k-li-aik-rol-mal-aerikr-ioniskoaafs-bijng"),
+  url3 <- ("https://www.inp.net.pk/ur/news-detail/%D8%A8%DB%8C%D9%86-%D8%A7%D9%82%D9%88%D8%A7%D9%85%DB%8C/asraeil-n-smndr-s-kdrti-gis-nkaln-kile-ktri-kmpni-ko-ajazt-d-di"),
+  url4 <- ("https://www.inp.net.pk/ur/news-detail/%D8%A8%DB%8C%D9%86-%D8%A7%D9%82%D9%88%D8%A7%D9%85%DB%8C/kinia-khaton-piramik-ro-hadth-mi-zkhmi-bii-ko-n-pchan-paei"),
+  url5 <- ("https://www.inp.net.pk/ur/news-detail/%D9%BE%D8%A7%DA%A9-%D8%B3%D8%B9%D9%88%D8%AF%DB%8C-%D8%B3%D8%B1%D9%88%D8%B3/%D8%AF%D9%88%D9%86%D9%88%DA%BA%20%D8%B1%DB%81%D9%86%D9%85%D8%A7%D8%A4%DA%BA%20%D9%86%DB%92%20%D8%B9%D9%84%D8%A7%D9%82%D8%A7%D8%A6%DB%8C%20%D9%88%20%D8%A8%DB%8C%D9%86%20%D8%A7%D9%84%D8%A7%D9%82%D9%88%D8%A7%D9%85%DB%8C%20%D8%AD%D8%A7%D9%84%D8%A7%D8%AA%20%D8%AD%D8%A7%D8%B6%D8%B1%DB%81%20%D8%A7%D9%88%D8%B1%20%D8%B1%D9%88%D9%86%D9%85%D8%A7%20%DB%81%D9%88%D9%86%DB%92%20%D9%88%D8%A7%D9%84%DB%8C%20%D8%A7%DB%81%D9%85%20%D8%AA%D8%A8%D8%AF%DB%8C%D9%84%DB%8C%D9%88%DA%BA%20%DA%A9%D8%A7%20%D8%AC%D8%A7%D8%A6%D8%B2%DB%81%20%D9%84%DB%8C%D8%A7%D8%8C%20%D8%A7%D9%85%D9%86%20%D9%88%20%D8%A7%D8%B3%D8%AA%D8%AD%DA%A9%D8%A7%D9%85%20%D9%82%D8%A7%D8%A6%D9%85%20%DA%A9%D8%B1%D9%86%DB%92%20%DA%A9%DB%92%20%D9%84%DB%8C%DB%92%20%DA%A9%DB%8C%20%D8%AC%D8%A7%D9%86%DB%92%20%D9%88%D8%A7%D9%84%DB%8C%20%DA%A9%D9%88%D8%B4%D8%B4%D9%88%DA%BA%20%D9%BE%D8%B1%20%D8%A8%DA%BE%DB%8C%20%D8%A8%D8%A7%D8%AA%20%DA%86%DB%8C%D8%AA%20%DA%A9%DB%8C"),
+  url6 <- ("https://www.inp.net.pk/ur/news-detail/%D9%BE%D8%A7%DA%A9-%D8%B3%D8%B9%D9%88%D8%AF%DB%8C-%D8%B3%D8%B1%D9%88%D8%B3/%DB%81%DB%8C%DA%A9%D8%B1%D8%B2-%D8%B3%DB%92-%D8%AE%D8%B7%D8%B1%DB%81%D8%8C-%D8%A8%D8%B1%D8%B7%D8%A7%D9%86%DB%8C%DB%81-%D9%85%DB%8C%DA%BA-%D9%86%D8%A6%DB%92-%D9%88%D8%B2%DB%8C%D8%B1%D8%A7%D8%B9%D8%B8%D9%85-%DA%A9%D8%A7-%D8%A7%D9%86%D8%AA%D8%AE%D8%A7%D8%A8-%D8%AA%D8%A7%D8%AE%DB%8C%D8%B1-%DA%A9%D8%A7-%D8%B4%DA%A9%D8%A7%D8%B1"),
+  url7 <- ("https://www.inp.net.pk/ur/news-detail/%D9%BE%D8%A7%DA%A9-%D8%B3%D8%B9%D9%88%D8%AF%DB%8C-%D8%B3%D8%B1%D9%88%D8%B3/%D9%BE%D8%A7%DA%A9%D8%B3%D8%AA%D8%A7%D9%86-%D8%B3%D8%B9%D9%88%D8%AF%DB%8C-%D8%B9%D8%B1%D8%A8-%D8%AA%D8%AC%D8%A7%D8%B1%D8%AA%DB%8C-%D8%8C%D9%85%D8%B9%D8%A7%D8%B4%DB%8C-%D8%AA%D8%B9%D9%84%D9%82%D8%A7%D8%AA-%DA%A9%DB%8C-%D9%85%D8%B2%DB%8C%D8%AF-%D8%A8%DB%81%D8%AA%D8%B1%DB%8C-%DA%A9%DB%8C%D9%84%D8%A6%DB%92-%D8%B1%D9%88%DA%88-%D9%85%DB%8C%D9%BE-%D8%A8%D9%86%D8%A7-%D9%86%DB%92-%DA%A9%D8%A7%DB%8C%DB%81-%D8%A8%DB%81%D8%AA%D8%B1%DB%8C%D9%86-%D9%88%D9%82%D8%AA-%DB%81%DB%92%D8%8C%D9%88%D8%B2%DB%8C%D8%B1%D9%90-%D8%A7%D8%B9%D8%B8%D9%85"),
+  url8 <- ("https://www.inp.net.pk/ur/news-detail/%D8%B4%D9%90%D9%86%DB%81%D9%88%D8%A7-%D9%BE%D8%A7%DA%A9%D8%B3%D8%AA%D8%A7%D9%86-%D8%B3%D8%B1%D9%88%D8%B3/chin-aor-pakstan-taaaon-aafat-ki-rok-tam-aor-tkhfif-k-shaab-mi-mzid-gra-o-gia"),
+  url9 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/hlim-aaadl-pis-di-praeioi-sikiori-hasl-kr-lisnd-aeikor"),
+  url10 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/pnjab-mi-alikshn-mltoi-krn-ka-maaaml-laoraeikor-barn-aal-pakstan-okla-knonshn-kotlb-krlia"),
+  url11 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/shandan-glzar-k-khlafbghaot-ka-mkdm-kharj"),
+  url12 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/si-i-i-ki-dsht-grdi-k-khdshat-k-pish-nthr-bi-karroaeia-5-dsht-grd-grftar-krli"),
+  url13 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/hsin-hkani-k-b-baei-lifinn-krnl-rhsn-hkani-antkal-kr-ge"),
+  url14 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/laor-aeikor-n-risorns-ko-aftari-s-shri-tk-koln-ki-ajazt-d-di"),
+  url15 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aarni-jnrl-birsr-shzad-ali-aad-s-mstaafi-oge"),
+  url16 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-n-sdr-mmlkt-k-thriaa-jnrl-bajo-ko-tosiaa-ki-aafr-ki-ti-khoaj-aasf"),
+  url17 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aioan-sdr-mi-tkrib-foji-afsran-aor-joano-mi-aaazazattksim-ki-ge"),
+  url18 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/sabk-mshir-zbir-ahmd-khan-ki-baziabi-ka-maaaml-aadalt-n-polis-ko-31march-tk-mlt-d-di"),
+  url19 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/snd-aeikor-n-sob-mi-jnsi-ziadti-k-kiszki-tfsilat-tlb-krli"),
+  url20 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/lapt-afrad-baziabi-kissobaei-aor-ofaki-hkomto-ko-nos-jari"),
+  url21 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/hsan-niazi-ki-drkhoast-dmant-daer"),
+  url22 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/hkmrano-ko-aamran-khan-k-klin-soip-ka-khof-kbd-grop-pr-aarikl-6lgna-chai-shikh-rshid"),
+  url23 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/raolpni-polis-k-chap-17pi-i-aaei-karkn-grftar"),
+  url24 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/ngran-oziraaali-khibr-pkhtonkhoa-k-maaaon-khsosi-dait-all-tori-mstaafi"),
+  url25 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/korona-mthbt-kisz-ki-shrh-sa3fisd-s-aopr-chli-gei"),
+  url26 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/tr-hkomti-akdamat-zbani-jmaa-khrch-tk-mhdod-14ma-mi-zar-s-zaed-bch-chl-bs"),
+  url27 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/jlaeo-gira-eokisansdad-dshtgrdi-aadalt-n-pi-i-aaei-rnma-asd-aamr-ki-dmant-mnthor-kr-li"),
+  url28 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/khaton-jj-dmki-kis-aamran-ki-oarn-maatli-mi-tosiaa-ki-drkhoast-pr-fisl-mhfoth"),
+  url29 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/srkari-skim-k-tht-hj-drkhoasto-ki-kraa-andazi-5april-ko-ogi"),
+  url30 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/sdr-ka-antkhab-sobaei-asmblio-k-chnaeo-tk-mmkn-ni-foad-chodri"),
+  url31 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/nib-n-aamran-khan-kikhlaf-kisz-ka-rikar-laor-aeikor-mi-jmaa-kroa-dia"),
+  url31 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/pnjab-mi-aaam-antkhabat-ki-mnsokhi-ka-maaaml-alikshn-kmishn-n-sdr-mmlkt-kokht-lk-dia"),
+  url32 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/zlzl-k-baaath-ai-alion-mi-khdadad-aeis-aor-margl-gi-o-plaz-mi-drai-p-gei"),
+  url33 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/mslm-lig-k-k-sdarti-ntaej-ko-rd-krn-ka-alikshn-kmishn-ka-fisl-mstrd"),
+  url34 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/i-aaoam-s-fra-ka-kis-ni-nib-n-pira-gon-aeosng-sosaei-kis-mi-dmni-rifrns-dakhl-kr-dia"),
+  url35 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/oa-iom-pakstan-aajjosh-ojthb-aor-shaian-shan-trik-k-sat-mnaia-jaeiga"),
+  url36 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/alikshn-30april-ko-i-o-ga-sprim-kor-n-blaia-to-sb-ba-adb-ba-mlahth-oshiar-k-o-gaaatzaz-ahsn"),
+  url37 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/rmdan-ki-aamd-s-pl-dkandar-ksab-bn-ge-si-i-a-n-bi-lmbi-tan-li"),
+  url38 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/trkol-ki-oj-s-tr-parkr-mi-logo-k-rozgar-k-moakaa-misr-aaei-g-ozir-kharj"),
+  url39 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/chin-ki-khlaei-nmaesh-pak-chin-dosti-chmk-ai"),
+  url40 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/mrdm-shmari-mi-khibr-pkhtonkhoa-ki-tin-zbani-shaml-krn-ka-fisl"),
+  url41 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/mhmd-khan-bi-ki-drkhoast-dmant-mnthor-krli-gei"),
+  url42 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/snd-aei-kor-ka-lapta-afrad-s-mtaalk-polis-rpor-pr-aadm-atminan-ka-athar"),
+  url43 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/pirol-prsbsi-ozirpirolim-n-trdid-krdi"),
+  url44 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/koei-kanon-o-aaein-s-balatr-ni-dsht-grdo-ko-pna-dina-aor-al-bnana-nakabl-brdasht-oziraaathm"),
+  url45 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/koe-s-grftar-khaton-khodksh-bmbar-s-mtaalk-am-ankshafat"),
+  url46 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/si-si-pi-ao-laor-ka-pi-i-aaei-karknan-ki-lso-s-laaalmi-ka-athar"),
+  url47 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/mons-ali-ki-ali-thrim-ali-smit-digr-mlzman-ki-aabori-dmant-mi-5-april-tk-tosiaa"),
+  url48 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/ab-jati-amra-aor-blaol-aos-ki-dioari-bi-oi-gi-aali-amin-gna-por"),
+  url49 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/sdr-mmlkt-n-komi-aktsadi-konsl-ki-tshkil-no-ki-mnthori-d-di"),
+  url50 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/zlzl-si-i-a-ka-blnd-aamarto-kmrshl-plazo-k-maaaen-ka-fisl"),
+  url51 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/koe-mi-drj-mkdm-mi-aamran-khan-k-oarn-ki-maatli-mi-tosiaa"),
+  url52 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/sprim-kor-ghlam-mhmod-ogr-k-tbadl-kikhlaf-apil-oaps-lin-ki-bniadpr-kharj"),
+  url53 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/mmnoaa-fnng-kis-pi-i-aaei-ki-skroni-kmii-arkan-pr-jrh-ki-drkhoast-kharj"),
+  url54 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/mni-lanrng-kishmz-shbaz-ki-hadri-maaafi-ki-drkhoast-mnthor-smaaat-4-april-tk-mlto"),
+  url55 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/laor-aeikor-ka-1990s-2001-tk-ka-tosh-khan-rikar-pblk-krnika-hkm"),
+  url56 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aif-aaei-a-n-aamran-khan-ki-dmant-mnthori-ka-fisl-aslam-aabad-aeikor-mi-chilnj-kr-dia"),
+  url57 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/joishl-kmpliks-pishi-toin-aadalt-ki-drkhoast-pr-aamran-khan-ko-nos"),
+  url58 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/chini-karobari-adar-pakstan-mi-kabl-tjdid-toanaei-ko-frogh-din-kile-pr-aazm"),
+  url59 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/ozart-toanaei-ka-shroaftar-aor-traoih-k-aokat-mi-loshing-n-krn-ka-fisl"),
+  url60 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/sobaei-alikshn-mi-aik-dn-ki-takhir-bi-aaein-s-maora-ogi-foad-chodri"),
+  url61 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-ko-naal-pi-i-aaei-ko-kalaadm-krar-dina-aasan-ni-ogashikh-rshid"),
+  url62 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/pi-aaei-pi-aif-a-k-zir-atmam-14oi-grijoishn-kanokishn-ki-tkrib-ka-anaakad"),
+  url63 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/pi-i-aaei-rnma-aaatf-khan-ki-4-april-tk-aabori-dmant-mnthor"),
+  url64 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-k-fokl-prsn-hsan-niazi-ka-2-roz-ka-jsmani-riman-mnthor"),
+  url65 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/rmdan-almbark-ka-chand-dikn-kile-roit-kmii-ka-ajlas-aaj-oga"),
+  url66 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/to-pokar-srkar-mi-mdakhlt-ka-kisaslm-akbaliasmin-rashd-ki-aabori-dmant-mnthor"),
+  url67 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-frd-jrm-s-bchn-kile-skiori-ka-hrb-astaamal-kr-r-i-shiri-rhman"),
+  url68 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/bi-aaei-aar-k-10-brs-goard-bndrga-ki-kng-gras-laeio-sak-aor-thfif-ghrbt-mi-maaaon"),
+  url69 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/snd-hkomt-n-sinko-nokrio-ka-aaalan-krdia"),
+  url70 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/hkomt-n-pirolim-askim-pr-koei-mshaort-ni-kiaaei-aim-aif"),
+  url71 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/thrik-ansaf-k-rnmao-ki-ghir-mlki-sfiro-s-mlakat-alikshn-pr-tbadl-khial"),
+  url72 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/ko-adonosr-baz-tajr-ko-aik-mlin-alr-ka-jaali-no-tma-kr-lako-ka-chona-lgage"),
+  url73 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/rosi-mdd-s-pakstan-maaashi-bhran-s-nkl-skta-rosi-konsli"),
+  url74 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamdn-s-zaed-athatho-ka-kisaagha-sraj-drani-ka-gr-sb-jil-krar"),
+  url75 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/tosh-khan-kisaamran-khan-ki-oarn-mnsokhi-ki-drkhoast-ghir-mothr-krar"),
+  url76 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/sndma-rmdan-kile-skolo-k-ne-aokat-kar-jari"),
+  url77 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/minar-pakstan-jlspi-i-aaei-ki-drkhoast-pr-smaaat-aaj-tk-mltoi"),
+  url78 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/chik-pos-pr-hml-kis-mi-aali-amin-gnapor-ki-hfathti-dmant-mnthor"),
+  url79 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/zman-park-aaprishn-mrim-noaz-rana-thna-o-digr-kikhlaf-andraj-mkdm-ki-drkhoast"),
+  url80 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/ansdad-dshtgrdi-aadaltaamran-khan-ki-hadri-astthna-ki-drkhoast-pr-fisl-mhfoth"),
+  url81 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/krachimdrs-k-mtmm-ko-faerng-kr-k-ktl-kr-dia-gia"),
+  url82 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/laor-nan-baeio-ka-roi-ki-kimt-15-rop-s-ba-kr-25-rop-krn-ka-aaalan"),
+  url83 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-kikhlaf-drj-mkdmat-ki-rpor-laor-aeikor-mi-pish"),
+  url84 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/pi-i-aaei-karkno-ki-rat-ge-grftaria-aor-tshdd-kabl-mthmt-shikh-rshid"),
+  url85 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/pi-i-aaei-pr-pabndi-s-aisa-rdaaml-aae-ga-jo-aap-soch-ni-skt-foad-chodri"),
+  url86 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/mir-khlaf-tmam-jo-mkdmat-i-an-ki-koei-bniad-ni-shikh-rshid-ahmd"),
+  url87 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aasf-zrdari-pr-ktl-ki-sazsh-ka-alzamaadalt-n-shikh-rshid-ko-hadri-lga-kr-jan-ki-ajazt-d-di"),
+  url88 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/amriki-rkn-kangris-maeik-lion-ka-aamran-khan-s-rabt-siasi-sorthal-pr-bat-chit"),
+  url89 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-ka-chif-jss-aaf-pakstan-k-nam-aik-aor-kht-ktl-ki-mbin-sazsh-ki-jamaa-thkikat-ki-astdaaa"),
+  url90 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/arshd-shrif-ktl-kis-kaem-kmii-n-aaend-ajlas-mi-ozir-dakhl-ko-tlb-krlia"),
+  url91 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/gornr-snd-ko-oziraaali-n-apn-hlk-mi-amdad-tksim-krn-s-rok-dia-mstfi-kmal"),
+  url92 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/pnjab-alikshnhlk-pi-pi-149-s-mrim-noaz-k-kaghthat-namzdgi-mnthor"),
+  url93 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/to-po-kissha-mhmod-krishi-ki-aabori-dmant-mi-ikm-april-tk-tosiaa"),
+  url94 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/maalom-ni-bd-k-jls-mi-kon-andr-aor-kon-bar-oga-sha-mhmodkrishi"),
+  url95 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/akr-shiri-mzadi-ka-bian-kabl-mthmt-aor-lakanonit-ki-anta-ofaki-ozir-dakhl"),
+  url96 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/snd-mi-dmni-bldiati-antkhabat-ka-shiol-aadalt-aaali-mi-jmaa"),
+  url97 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/snd-dmni-bldiati-alikshnpiplzpari-ka-tmam-nshsto-pramidoarnamzd-krn-ka-fisl"),
+  url98 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-ka-banja-hsan-niazi-grftar"),
+  url99 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/tosh-khan-kisbshri-bi-bi-ko-aajnib-n-tlb-kr-lia"),
+  url100 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/riast-ka-kam-apn-shrio-ki-hfatht-krna-chif-jss"),
+  url101 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/mhmd-noaz-shrif-ki-aadli-bha-li-thrik-jrat-aor-ba-dri-ki-roshn-mtha-l-tlal-chodri"),
+  url102 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/knd-ko-ako-n-mzid-4-afrad-ko-aghoa-krlia-taadad-11-ogei"),
+  url103 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/rilo-mlazmin-tnkhoai-n-mln-pr-srapa-ahtjaj-rhman-baba-aikspris-takhir-ka-shkar"),
+  url104 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aslam-aabad-mi-fstaeit-aaroj-pr-karkno-ki-grftario-pr-aamran-khan-ka-rdaaml"),
+  url105 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/ngam-aaraei-kisasd-aamr-mrad-saaid-shbli-fraz-smit-digr-ki-aabori-dmanti-mnthor"),
+  url106 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/ngran-pnjab-hkomt-ka-zman-park-oakaa-ki-thkikat-kile-j-aaei-i-bnan-ka-aaalan"),
+  url107 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/bi-aar-aaei-k-thmrat-goadr-garmn-fikri-mkami-khoatin-ko-baakhtiar-bna-n-mi-pish-pish"),
+  url108 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/goadr-ko-airan-s-100-migaoa-bjli-ki-frami-shroaa-ogei"),
+  url109 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/thrik-ansaf-ka-gornr-khibrpkhtonkhoa-k-khlaf-kanoni-karroaei-ka-fisl"),
+  url110 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/alikshn-kmishn-ko-pnjab-mi-antkhabat-kran-ka-pabnd-bnan-kile-nei-drkhoast-daer"),
+  url111 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/dn-baad-ngran-si-ap-gr-jae-ga-to-lg-pta-jae-ga-shikh-rshid"),
+  url112 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/chniomsafr-bs-aor-ralr-k-drmian-tsadm-aik-shkhs-ja-bhk"),
+  url113 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/minar-pakstan-jls-s-kbl-polis-n-pi-i-aaei-karkno-ki-grftaria-shroaa-kr-di"),
+  url114 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/polis-aor-aaei-ji-aathab-ali-ko-daaot-d-r-ifoad-chodri"),
+  url115 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/tosh-khan-fojdari-kis-ki-smaaat-ka-thriri-hkm-nam-jari"),
+  url116 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-ko-pari-srbrai-s-an-kile-nos-kikhlaf-drkhoastaaj-smaaat-kile-mkrr"),
+  url117 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-kikhlaf-mkdmat-aslam-aabad-aeikor-n-frikin-s-27-march-tk-joab-tlb-krlia"),
+  url118 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/mlk-br-mi-korona-k-mthbt-kisz-ki-shrh-mi-dobar-adaf"),
+  url119 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/i-to-oi-kmr-okil-amjd-proiz-ka-joishl-kmpliks-k-kmr-aadalt-pnchn-pr-tnzi-bian"),
+  url120 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aslam-aabad-k-tmam-sptalo-mi-aimrjnsi-nafth"),
+  url121 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/dln-n-aamran-khan-k-hk-mi-naar-lga-dei-oiio-oaerl"),
+  url122 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-k-gr-k-andr-s-faerng-oeingran-ozir-atlaaaat-ka-daaoi"),
+  url123 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/shrjil-mimn-smit-104-nib-rifrns-faaal-aadalto-mi-mntkl"),
+  url124 <- ("https://www.inp.net.pk/ur/news-detail/پاکستان/aamran-khan-ki-pishi-aamran-khan-ki-thati-sikiori-aaml-ki-ra-mi-bi-rkaoi-drkhoast-daer")
+  
+)
+
+```
+
+```{r}
+# combine all news pieces into a dataframe
+datalist = vector("list", length = 9) 
+for (i in seq_along(url_list)){
+  datalist[[i]] <- scrape_doc(url_list[[i]])
+}
+inp <- do.call(rbind, datalist)
+inp
+```
+
+```{r error=FALSE}
+# export dataframe into txt files in INP directory
+for (i in datalist){
+  name <- i[[2]]
+  txt <- i[3]
+  write.table(txt, sprintf("/Users/michaelhuang/Dropbox/University of Chicago/2023 Spring/DIGS 30032/Final project/INP/%s.txt", name))
+}
+```
+
+# JANG news 
+
+```{r}
+# JANG news webscraping function
+scrape_jang <- function(url){
+  df <- read_html(url)
+  title <- html_elements(x=df, css="h1") %>% # retrieve title
+    html_text2()
+  #title <- title[1]
+  date <- html_elements(x= df, css = ".detail-time") %>% # retrieve date
+    html_text2()
+  date <- date[3]
+  text <- html_elements(x = df, css = ".detail_view_content") %>% # retrieve text
+  html_text2() 
+  url_data <- tibble(
+    date=date,
+    title=title,
+    text=text
+  )
+  return(url_data)
+}
+```
+
+```{r}
+# INP news URLs DATED except the first eight
+#03/25/2-23-
+
+url_list <- c(
+  url1 <- ("https://jang.com.pk/news/1208374"),
+  url2 <- ("https://jang.com.pk/news/1208137"),
+  url3 <- ("https://jang.com.pk/news/1208372"),
+  url4 <- ("https://jang.com.pk/news/1208228"),
+  url5 <- ("https://jang.com.pk/news/1208233"),
+  url6 <- ("https://jang.com.pk/news/1208223"),
+  url7 <- ("https://jang.com.pk/news/1208139"),
+  url8 <- ("https://jang.com.pk/news/1208183"),
+  url9 <- ("https://jang.com.pk/news/1208232"),
+  url10 <- ("https://jang.com.pk/news/1208272"),
+  url11 <- ("https://jang.com.pk/news/1208367"),
+  url12 <- ("https://jang.com.pk/news/1208368"),
+  url13 <- ("https://jang.com.pk/news/1208168"),
+  url14 <- ("https://jang.com.pk/news/1208227"),
+  url15 <- ("https://jang.com.pk/news/1208226"),
+  url16 <- ("https://jang.com.pk/news/1208225"),
+  url17 <- ("https://jang.com.pk/news/1208224"),
+  url18 <- ("https://jang.com.pk/news/1208369"),
+  url19 <- ("https://jang.com.pk/news/1208371"),
+  url20 <- ("https://jang.com.pk/news/1208122"),
+  url21 <- ("https://jang.com.pk/news/1208140"),
+  url22 <- ("https://jang.com.pk/news/1208139"),
+  url23 <- ("https://jang.com.pk/news/1208128"),
+  url24 <- ("https://jang.com.pk/news/1208120"),
+  url25 <- ("https://jang.com.pk/news/1208126"),
+  url26 <- ("https://jang.com.pk/news/1208122"),
+  url27 <- ("https://jang.com.pk/news/1208103"),
+  url28 <- ("https://jang.com.pk/news/1208112"),
+  url29 <- ("https://jang.com.pk/news/1208134"),
+  url30 <- ("https://jang.com.pk/news/1208132"),
+  url31 <- ("https://jang.com.pk/news/1208133"),
+  url32 <- ("https://jang.com.pk/news/1208136"),
+  url33 <- ("https://jang.com.pk/news/1208115"),
+  url34 <- ("https://jang.com.pk/news/1208108"),
+  url35 <- ("https://jang.com.pk/news/1208124"),
+  url36 <- ("https://jang.com.pk/news/1208120"),
+  url37 <- ("https://jang.com.pk/news/1208113"),
+  url38 <- ("https://jang.com.pk/news/1208109"),
+  url39 <- ("https://jang.com.pk/news/1208107"),
+  url40 <- ("https://jang.com.pk/news/1208105"),
+  url41 <- ("https://jang.com.pk/news/1208104"),
+  url42 <- ("https://jang.com.pk/news/1208103"),
+  url43 <- ("https://jang.com.pk/news/1208101"),
+  url44 <- ("https://jang.com.pk/news/1208099"),
+  url45 <- ("https://jang.com.pk/news/1208098"),
+  url46 <- ("https://jang.com.pk/news/1208093"),
+  url47 <- ("https://jang.com.pk/news/1208092"),
+  url48 <- ("https://jang.com.pk/news/1208091"),
+  url49 <- ("https://jang.com.pk/news/1208089"),
+  url50 <- ("https://jang.com.pk/news/1208086"),
+  url51 <- ("https://jang.com.pk/news/1208083"),
+  url52 <- ("https://jang.com.pk/news/1208079"),
+  url53 <- ("https://jang.com.pk/news/1208078"),
+  url54 <- ("https://jang.com.pk/news/1208070"),
+  url55 <- ("https://jang.com.pk/news/1208069"),
+  url56 <- ("https://jang.com.pk/news/1208067"),
+  url57 <- ("https://jang.com.pk/news/1208063"),
+  url58 <- ("https://jang.com.pk/news/1208061"),
+  url59 <- ("https://jang.com.pk/news/1208060"),
+  url60 <- ("https://jang.com.pk/news/1208051"),
+  url61 <- ("https://jang.com.pk/news/1208050"),
+  url62 <- ("https://jang.com.pk/news/1208047"),
+  url63 <- ("https://jang.com.pk/news/1208045"),
+  url64 <- ("https://jang.com.pk/news/1208023"),
+  url65 <- ("https://jang.com.pk/news/1208031"),
+  url66 <- ("https://jang.com.pk/news/1208007"),
+  url67 <- ("https://jang.com.pk/news/1207999"),
+  url68 <- ("https://jang.com.pk/news/1207997"),
+  url69 <- ("https://jang.com.pk/news/1207996"),
+  url70 <- ("https://jang.com.pk/news/1207994"),
+  url71 <- ("https://jang.com.pk/news/1207993"),
+  url72 <- ("https://jang.com.pk/news/1207792"),
+  url73 <- ("https://jang.com.pk/news/1207788"),
+  url74 <- ("https://jang.com.pk/news/1207777"),
+  url75 <- ("https://jang.com.pk/news/1207776"),
+  url76 <- ("https://jang.com.pk/news/1207775"),
+  url77 <- ("https://jang.com.pk/news/1207774"),
+  url78 <- ("https://jang.com.pk/news/1207773"),
+  url79 <- ("https://jang.com.pk/news/1207772"),
+  url80 <- ("https://jang.com.pk/news/1207767"),
+  url81 <- ("https://jang.com.pk/news/1207766"),
+  url82 <- ("https://jang.com.pk/news/1207765"),
+  url83 <- ("https://jang.com.pk/news/1207764")
+)
+```
+
+```{r}
+datalist = vector("list", length = 2) 
+for (i in seq_along(url_list)){
+  datalist[[i]] <- scrape_jang(url_list[[i]])
+}
+jang <- do.call(rbind, datalist)
+jang
+```
+
+
+
+
+
+
+
+
+
+
+
+###############################################################################
+```{r dev='ragg_png'}
+stopwords <- read.delim("stopwords-ur.txt")
+cleaned_df <- inp %>% 
+  unnest_tokens(word, text) %>% 
+  anti_join(stopwords, by="word")
+
+words_by_title <- cleaned_df %>% 
+  count(title,word, sort=TRUE) %>% 
+  ungroup()
+```
+
+```{r dev='ragg_png'}
+title_word_pairs <- words_by_title %>% 
+  pairwise_count(word, title, n, sort=TRUE, upper=FALSE)
+
+set.seed(1234)
+
+title_word_pairs %>%
+  filter(n >= 36) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "cyan4") +
+  geom_node_point(size = 3) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
+```
+
+```{r dev='ragg_png'}
+title_cors <- words_by_title %>% 
+  pairwise_cor(title, word, n, sort=TRUE)
+
+set.seed(2007)
+
+title_cors %>% 
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation, edge_width = correlation, color="cyan4")) +
+  geom_node_point(size = 3, color = "lightblue") +
+  geom_node_text(aes(label = name), size=2.5, repel = TRUE) +
+  theme_void()
+```
+
+```{r}
+inp_dtm <- cleaned_df %>%
+  unite(document, title) %>%
+  count(document, word) %>%
+  cast_dtm(document, word, n)
+```
+
+```{r}
+inp_lda <- LDA(inp_dtm, k = 7, control = list(seed = 2016))
+```
+
+```{r  dev='ragg_png'}
+inp_topics <- tidy(inp_lda, matrix = "beta")
+top_terms <- inp_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 5) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered()
+```
+
+```{r}
+inp_bigrams <- inp %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) %>%
+  filter(!is.na(bigram)) 
+inp_bigrams %>%
+  count(bigram, sort = TRUE)
+bigrams_separated <- inp_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+```
+
