@@ -185,7 +185,7 @@ inp
 for (i in datalist){
   name <- i[[2]]
   txt <- i[3]
-  write.table(txt, sprintf("/Users/michaelhuang/Dropbox/University of Chicago/2023 Spring/DIGS 30032/Final project/INP/%s.txt", name))
+  write.table(txt, sprintf("/Users/michaelhuang/Dropbox/University of Chicago/2023 Spring/DIGS 30032/Final project/Urdu News Authorship Classifier/INP/%s.txt", name))
 }
 ```
 
@@ -304,7 +304,7 @@ url_list <- c(
 ```
 
 ```{r}
-datalist = vector("list", length = 2) 
+datalist = vector("list", length = 83) 
 for (i in seq_along(url_list)){
   datalist[[i]] <- scrape_jang(url_list[[i]])
 }
@@ -312,6 +312,14 @@ jang <- do.call(rbind, datalist)
 jang
 ```
 
+```{r}
+# export dataframe into txt files in JANG directory
+for (i in datalist){
+  name <- i[[2]]
+  txt <- i[3]
+  write.table(txt, sprintf("/Users/michaelhuang/Dropbox/University of Chicago/2023 Spring/DIGS 30032/Final project/Urdu News Authorship Classifier/JANG/%s.txt", name))
+}
+```
 
 
 
